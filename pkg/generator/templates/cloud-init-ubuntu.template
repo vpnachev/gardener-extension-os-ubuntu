@@ -1,6 +1,6 @@
 #cloud-config
 apt_update: true
-packages: ['docker.io', 'socat', 'nfs-common', 'logrotate', 'jq', 'policykit-1']
+packages: ['docker.io', 'socat', 'nfs-common', 'logrotate', 'jq', 'policykit-1', 'iptables', 'arptables', 'ebtables', 'nftables']
 write_files:
 {{ if .Bootstrap -}}
 - path: '/etc/cloud/cloud.cfg.d/custom-networking.cfg'
@@ -35,12 +35,18 @@ write_files:
 {{- end -}}
 {{- end }}
 runcmd:
-- systemctl daemon-reload
 {{ if .Bootstrap -}}
+- update-alternatives --set iptables /usr/sbin/iptables-legacy
+- update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy
+- update-alternatives --set arptables /usr/sbin/arptables-legacy
+- update-alternatives --set ebtables /usr/sbin/ebtables-legacy
+- nft flush ruleset
+- systemctl mask nftables.service
 - ln -s /usr/bin/docker /bin/docker
-- ln -sf /run/systemd/resolve/resolv.conf /etc/resolv.conf
+- systemctl daemon-reload
 - systemctl restart docker
 {{ end -}}
+- systemctl daemon-reload
 {{ range $_, $unit := .Units -}}
 - systemctl enable '{{ $unit.Name }}' && systemctl restart '{{ $unit.Name }}'
 {{ end -}}
